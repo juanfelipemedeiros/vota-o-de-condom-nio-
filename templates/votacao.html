@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block titulo %}{{ v.titulo }}{% endblock %}
+{% block conteudo %}
+<h1>{{ v.titulo }}</h1>
+<p class="muted">{{ v.data_inicio|formata }} a {{ v.data_fim|formata }} ·
+  <span class="etiqueta {{ estado(v) }}">{{ estado(v) }}</span></p>
+{% if v.descricao %}<p>{{ v.descricao }}</p>{% endif %}
+
+<h2>Seu voto</h2>
+{% if not minhas %}
+  <p class="muted">Você não é o votante autorizado de nenhum apartamento. Fale com o síndico se isso estiver incorreto.</p>
+{% endif %}
+{% for u in minhas %}
+  <div class="painel">
+    <strong>Bloco {{ u.bloco }} · apto {{ u.numero }}</strong>
+    {% if u.opcao_votada %}
+      <p>Voto registrado:
+        {% for o in opcoes if o.id == u.opcao_votada %}<strong>{{ o.texto }}</strong>{% endfor %}</p>
+    {% elif estado(v) == 'aberta' %}
+      <form method="post" action="{{ url_for('votar', vid=v.id) }}">
+        <input type="hidden" name="unidade_id" value="{{ u.id }}">
+        {% for o in opcoes %}
+          <label class="opcao"><input type="radio" name="opcao_id" value="{{ o.id }}" required>{{ o.texto }}</label>
+        {% endfor %}
+        <button type="submit">Confirmar voto</button>
+      </form>
+    {% else %}
+      <p class="muted">A votação não está aberta para novos votos.</p>
+    {% endif %}
+  </div>
+{% endfor %}
+
+{% if mostrar_resultado %}
+  <h2>Resultado{% if estado(v) != 'encerrada' %} parcial{% endif %}</h2>
+  {% set total = resultado|sum(attribute='total') %}
+  <div class="painel">
+    {% for r in resultado %}
+      <div style="margin-bottom:.8rem">
+        <div>{{ r.texto }} — <strong>{{ r.total }}</strong> voto(s)</div>
+        <div class="barra"><span style="width: {{ (100 * r.total / total) if total else 0 }}%"></span></div>
+      </div>
+    {% endfor %}
+    <p class="muted">Participação: {{ participacao[0] }} de {{ participacao[1] }} unidades.</p>
+  </div>
+{% endif %}
+
+{% if g.user.perfil == 'admin' %}
+  <h2>Votos por unidade</h2>
+  {% if nominal %}
+  <div class="tabela"><table>
+    <thead><tr><th>Unidade</th><th>Votou</th><th>Escolha</th><th>Data e hora</th></tr></thead>
+    <tbody>
+    {% for n in nominal %}
+      <tr><td>{{ n.bloco }}-{{ n.numero }}</td><td>{{ n.nome }}</td><td>{{ n.texto }}</td><td>{{ n.data_hora }}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% else %}<p class="muted">Nenhum voto registrado ainda.</p>{% endif %}
+{% endif %}
+{% endblock %}

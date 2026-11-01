@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Nova votação{% endblock %}
+{% block conteudo %}
+<h1>Nova votação</h1>
+<form method="post" class="painel">
+  <label for="titulo">Título da pauta</label>
+  <input id="titulo" name="titulo" required maxlength="150" value="{{ request.form.titulo }}">
+  <label for="descricao">Descrição</label>
+  <textarea id="descricao" name="descricao" rows="4">{{ request.form.descricao }}</textarea>
+  <label for="data_inicio">Abre em</label>
+  <input id="data_inicio" name="data_inicio" type="datetime-local" required value="{{ request.form.data_inicio }}">
+  <label for="data_fim">Encerra em</label>
+  <input id="data_fim" name="data_fim" type="datetime-local" required value="{{ request.form.data_fim }}">
+  <label for="opcoes">Opções de voto (uma por linha)</label>
+  <textarea id="opcoes" name="opcoes" rows="4" required>{{ request.form.opcoes or "Sim\nNão\nAbstenção" }}</textarea>
+  <button type="submit">Criar votação</button>
+</form>
+{% endblock %}

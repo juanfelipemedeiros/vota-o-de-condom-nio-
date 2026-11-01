@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block conteudo %}
+<h1>Entrar</h1>
+<form method="post" class="painel" style="max-width:420px">
+  <label for="email">E-mail</label>
+  <input id="email" name="email" type="email" required autofocus>
+  <label for="senha">Senha</label>
+  <input id="senha" name="senha" type="password" required>
+  <button type="submit">Entrar</button>
+</form>
+{% endblock %}

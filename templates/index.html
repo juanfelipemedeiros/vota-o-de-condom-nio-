@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<h1>Votações</h1>
+{% if not votacoes %}
+  <p class="muted">Nenhuma votação cadastrada ainda.
+  {% if g.user.perfil == 'admin' %}<a href="{{ url_for('nova_votacao') }}">Criar a primeira votação</a>.{% endif %}</p>
+{% else %}
+<div class="tabela">
+<table>
+  <thead><tr><th>Pauta</th><th>Período</th><th>Situação</th></tr></thead>
+  <tbody>
+  {% for v in votacoes %}
+    <tr>
+      <td><a href="{{ url_for('votacao', vid=v.id) }}">{{ v.titulo }}</a></td>
+      <td>{{ v.data_inicio|formata }} a {{ v.data_fim|formata }}</td>
+      <td><span class="etiqueta {{ estado(v) }}">{{ estado(v) }}</span></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

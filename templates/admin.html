@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block titulo %}Cadastros{% endblock %}
+{% block conteudo %}
+<h1>Cadastros</h1>
+<div class="grid">
+  <form method="post" action="{{ url_for('admin_usuario') }}" class="painel">
+    <strong>Novo usuário</strong>
+    <label for="u_nome">Nome</label><input id="u_nome" name="nome" required>
+    <label for="u_cpf">CPF (só números)</label><input id="u_cpf" name="cpf" required maxlength="11">
+    <label for="u_email">E-mail</label><input id="u_email" name="email" type="email" required>
+    <label for="u_senha">Senha inicial</label><input id="u_senha" name="senha" type="password" required>
+    <label for="u_perfil">Perfil</label>
+    <select id="u_perfil" name="perfil"><option value="votante">Morador</option><option value="admin">Administrador</option></select>
+    <button type="submit">Cadastrar usuário</button>
+  </form>
+
+  <form method="post" action="{{ url_for('admin_unidade') }}" class="painel">
+    <strong>Nova unidade</strong>
+    <label for="un_bloco">Bloco</label><input id="un_bloco" name="bloco" required>
+    <label for="un_num">Apartamento</label><input id="un_num" name="numero" required>
+    <button type="submit">Cadastrar unidade</button>
+  </form>
+
+  <form method="post" action="{{ url_for('admin_proprietario') }}" class="painel">
+    <strong>Vincular proprietário</strong>
+    <label for="p_un">Unidade</label>
+    <select id="p_un" name="unidade_id" required>
+      {% for u in unidades %}<option value="{{ u.id }}">{{ u.bloco }}-{{ u.numero }}</option>{% endfor %}
+    </select>
+    <label for="p_us">Proprietário</label>
+    <select id="p_us" name="usuario_id" required>
+      {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nome }}</option>{% endfor %}
+    </select>
+    <button type="submit">Vincular</button>
+  </form>
+
+  <form method="post" action="{{ url_for('admin_votante') }}" class="painel">
+    <strong>Definir votante da unidade</strong>
+    <label for="v_un">Unidade</label>
+    <select id="v_un" name="unidade_id" required>
+      {% for u in unidades %}<option value="{{ u.id }}">{{ u.bloco }}-{{ u.numero }}</option>{% endfor %}
+    </select>
+    <label for="v_us">Quem vota pela unidade</label>
+    <select id="v_us" name="usuario_id" required>
+      {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nome }}</option>{% endfor %}
+    </select>
+    <label for="v_ind">Indicado por (se não for proprietário)</label>
+    <select id="v_ind" name="indicado_por">
+      <option value="">—</option>
+      {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nome }}</option>{% endfor %}
+    </select>
+    <button type="submit">Salvar votante</button>
+  </form>
+</div>
+
+<h2>Votante atual de cada unidade</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Unidade</th><th>Votante</th><th>Tipo</th><th>Indicado por</th></tr></thead>
+  <tbody>
+  {% for v in votantes %}
+    <tr><td>{{ v.bloco }}-{{ v.numero }}</td><td>{{ v.nome }}</td><td>{{ v.tipo }}</td><td>{{ v.indicado_por or '—' }}</td></tr>
+  {% else %}
+    <tr><td colspan="4" class="muted">Nenhuma unidade tem votante definido.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}
