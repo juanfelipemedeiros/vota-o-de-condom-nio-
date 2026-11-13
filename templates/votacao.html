@@ -6,6 +6,15 @@
   <span class="etiqueta {{ estado(v) }}">{{ estado(v) }}</span></p>
 {% if v.descricao %}<p>{{ v.descricao }}</p>{% endif %}
 
+{% if g.user.perfil == 'admin' %}
+<form method="post" action="{{ url_for('editar_fim', vid=v.id) }}" class="painel">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label for="data_fim">Alterar data de encerramento</label>
+  <input id="data_fim" name="data_fim" type="datetime-local" required value="{{ v.data_fim }}">
+  <button type="submit">Salvar data</button>
+</form>
+{% endif %}
+
 <h2>Seu voto</h2>
 {% if not minhas %}
   <p class="muted">Você não é o votante autorizado de nenhum apartamento. Fale com o síndico se isso estiver incorreto.</p>
@@ -18,6 +27,7 @@
         {% for o in opcoes if o.id == u.opcao_votada %}<strong>{{ o.texto }}</strong>{% endfor %}</p>
     {% elif estado(v) == 'aberta' %}
       <form method="post" action="{{ url_for('votar', vid=v.id) }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
         <input type="hidden" name="unidade_id" value="{{ u.id }}">
         {% for o in opcoes %}
           <label class="opcao"><input type="radio" name="opcao_id" value="{{ o.id }}" required>{{ o.texto }}</label>

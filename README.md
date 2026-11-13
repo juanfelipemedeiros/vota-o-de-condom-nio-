@@ -25,3 +25,5 @@ Logins de teste:
 
 Para começar sem dados de teste: `python init_db.py` (cria só o síndico).
 Em uso real, troque a senha do síndico e defina a variável SECRET_KEY.
+
+Testes: `python -m unittest` (voto duplicado, CSRF, permissões, concorrência).

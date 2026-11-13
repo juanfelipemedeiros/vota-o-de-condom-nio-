@@ -3,6 +3,7 @@
 {% block conteudo %}
 <h1>Nova votação</h1>
 <form method="post" class="painel">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
   <label for="titulo">Título da pauta</label>
   <input id="titulo" name="titulo" required maxlength="150" value="{{ request.form.titulo }}">
   <label for="descricao">Descrição</label>
@@ -11,6 +12,7 @@
   <input id="data_inicio" name="data_inicio" type="datetime-local" required value="{{ request.form.data_inicio }}">
   <label for="data_fim">Encerra em</label>
   <input id="data_fim" name="data_fim" type="datetime-local" required value="{{ request.form.data_fim }}">
+  <label class="opcao"><input type="checkbox" name="encerra_ao_completar" value="1" {{ 'checked' if request.form.encerra_ao_completar }}>Encerrar antes se todas as unidades votarem</label>
   <label for="opcoes">Opções de voto (uma por linha)</label>
   <textarea id="opcoes" name="opcoes" rows="4" required>{{ request.form.opcoes or "Sim\nNão\nAbstenção" }}</textarea>
   <button type="submit">Criar votação</button>

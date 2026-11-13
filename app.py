@@ -1,4 +1,5 @@
 import os
+import secrets
 import sqlite3
 from datetime import datetime
 from functools import wraps
@@ -9,15 +10,21 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "troque-esta-chave-em-producao")
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "votacao.db")
 
 
 # ---------- Banco de dados ----------
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
+        g.db = sqlite3.connect(DB_PATH, timeout=30)  # espera o lock em vez de falhar sob carga
+        g.db.execute("PRAGMA journal_mode = WAL")
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
+        try:  # ponytail: migração simples p/ bancos criados antes desta coluna
+            g.db.execute("ALTER TABLE votacoes ADD COLUMN encerra_ao_completar INTEGER NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
     return g.db
 
 
@@ -37,7 +44,7 @@ def estado(votacao):
     n = agora()
     if n < votacao["data_inicio"]:
         return "agendada"
-    if n > votacao["data_fim"]:
+    if n >= votacao["data_fim"]:
         return "encerrada"
     return "aberta"
 
@@ -48,6 +55,23 @@ def formata(dt):
 
 app.jinja_env.globals["estado"] = estado
 app.jinja_env.filters["formata"] = formata
+
+
+def csrf_token():
+    if "csrf" not in session:
+        session["csrf"] = secrets.token_hex(16)
+    return session["csrf"]
+
+
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+
+@app.before_request
+def confere_csrf():
+    if request.method == "POST":
+        sent = request.form.get("csrf", "")
+        if not sent or not secrets.compare_digest(sent, session.get("csrf", "")):
+            abort(400)
 
 
 @app.before_request
@@ -147,6 +171,20 @@ def votacao(vid):
                            mostrar_resultado=mostrar_resultado)
 
 
+def fecha_se_completo(db, v):
+    """Se a votação pede, encerra quando todas as unidades com votante já votaram."""
+    if not v["encerra_ao_completar"]:
+        return
+    faltam = db.execute(
+        """SELECT COUNT(*) FROM autorizacoes_voto a WHERE a.ativo = 1 AND NOT EXISTS
+           (SELECT 1 FROM votos WHERE votacao_id = ? AND unidade_id = a.unidade_id)""",
+        (v["id"],)).fetchone()[0]
+    if faltam == 0 and agora() > v["data_inicio"]:
+        db.execute("UPDATE votacoes SET data_fim = ? WHERE id = ?", (agora(), v["id"]))
+        db.commit()
+        flash("Todas as unidades votaram: votação encerrada.")
+
+
 @app.post("/votacao/<int:vid>/votar")
 @login_required
 def votar(vid):
@@ -181,6 +219,7 @@ def votar(vid):
                    (vid, unidade_id, g.user["id"], opcao_id))
         db.commit()
         flash("Voto registrado.")
+        fecha_se_completo(db, v)
     except sqlite3.IntegrityError:
         flash("Esta unidade já votou nesta votação.")
     return destino
@@ -193,10 +232,13 @@ def admin():
     db = get_db()
     return render_template(
         "admin.html",
+        pre=request.args,  # "Editar" preenche o formulário de votante
+
         usuarios=db.execute("SELECT * FROM usuarios ORDER BY nome").fetchall(),
         unidades=db.execute("SELECT * FROM unidades ORDER BY bloco, numero").fetchall(),
         votantes=db.execute(
-            """SELECT un.bloco, un.numero, us.nome, a.tipo,
+            """SELECT un.id AS unidade_id, us.id AS usuario_id, a.indicado_por AS ind_id,
+                      un.bloco, un.numero, us.nome, a.tipo,
                       (SELECT nome FROM usuarios WHERE id = a.indicado_por) AS indicado_por
                FROM autorizacoes_voto a
                JOIN unidades un ON un.id = a.unidade_id
@@ -240,7 +282,12 @@ def admin_unidade():
 @admin_required
 def admin_proprietario():
     f = request.form
-    tenta(get_db(), "INSERT INTO proprietarios (unidade_id, usuario_id) VALUES (?,?)",
+    db = get_db()
+    if db.execute("SELECT COUNT(*) FROM proprietarios WHERE unidade_id = ?",
+                  (f["unidade_id"],)).fetchone()[0] >= 2:
+        flash("Esta unidade já tem 2 proprietários (máximo permitido).")
+        return redirect(url_for("admin"))
+    tenta(db, "INSERT INTO proprietarios (unidade_id, usuario_id) VALUES (?,?)",
           (f["unidade_id"], f["usuario_id"]), "Proprietário vinculado à unidade.")
     return redirect(url_for("admin"))
 
@@ -280,6 +327,28 @@ def admin_votante():
     return redirect(url_for("admin"))
 
 
+@app.post("/admin/votacao/<int:vid>/fim")
+@admin_required
+def editar_fim(vid):
+    db = get_db()
+    v = db.execute("SELECT * FROM votacoes WHERE id = ?", (vid,)).fetchone()
+    if v is None:
+        abort(404)
+    novo = request.form.get("data_fim", "")
+    try:
+        datetime.strptime(novo, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        flash("Data inválida.")
+    else:
+        if novo <= v["data_inicio"]:
+            flash("A data de encerramento deve ser depois da data de início.")
+        else:
+            db.execute("UPDATE votacoes SET data_fim = ? WHERE id = ?", (novo, vid))
+            db.commit()
+            flash("Data de encerramento atualizada.")
+    return redirect(url_for("votacao", vid=vid))
+
+
 @app.route("/admin/votacao/nova", methods=["GET", "POST"])
 @admin_required
 def nova_votacao():
@@ -289,13 +358,20 @@ def nova_votacao():
         if len(opcoes) < 2:
             flash("Informe pelo menos duas opções, uma por linha.")
             return render_template("nova_votacao.html")
+        try:
+            for k in ("data_inicio", "data_fim"):
+                datetime.strptime(f[k], "%Y-%m-%dT%H:%M")
+        except (KeyError, ValueError):
+            flash("Datas inválidas.")
+            return render_template("nova_votacao.html")
         if f["data_fim"] <= f["data_inicio"]:
             flash("A data de encerramento deve ser depois da data de início.")
             return render_template("nova_votacao.html")
         db = get_db()
-        cur = db.execute("INSERT INTO votacoes (titulo, descricao, data_inicio, data_fim) VALUES (?,?,?,?)",
+        cur = db.execute("INSERT INTO votacoes (titulo, descricao, data_inicio, data_fim, encerra_ao_completar) "
+                         "VALUES (?,?,?,?,?)",
                          (f["titulo"].strip(), f.get("descricao", "").strip(),
-                          f["data_inicio"], f["data_fim"]))
+                          f["data_inicio"], f["data_fim"], 1 if f.get("encerra_ao_completar") else 0))
         db.executemany("INSERT INTO opcoes (votacao_id, texto) VALUES (?,?)",
                        [(cur.lastrowid, o) for o in opcoes])
         db.commit()
@@ -307,4 +383,4 @@ def nova_votacao():
 if __name__ == "__main__":
     if not os.path.exists(DB_PATH):
         print("Banco não encontrado. Rode primeiro:  python init_db.py --demo")
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

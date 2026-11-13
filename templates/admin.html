@@ -4,6 +4,7 @@
 <h1>Cadastros</h1>
 <div class="grid">
   <form method="post" action="{{ url_for('admin_usuario') }}" class="painel">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
     <strong>Novo usuário</strong>
     <label for="u_nome">Nome</label><input id="u_nome" name="nome" required>
     <label for="u_cpf">CPF (só números)</label><input id="u_cpf" name="cpf" required maxlength="11">
@@ -15,6 +16,7 @@
   </form>
 
   <form method="post" action="{{ url_for('admin_unidade') }}" class="painel">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
     <strong>Nova unidade</strong>
     <label for="un_bloco">Bloco</label><input id="un_bloco" name="bloco" required>
     <label for="un_num">Apartamento</label><input id="un_num" name="numero" required>
@@ -22,32 +24,34 @@
   </form>
 
   <form method="post" action="{{ url_for('admin_proprietario') }}" class="painel">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
     <strong>Vincular proprietário</strong>
     <label for="p_un">Unidade</label>
     <select id="p_un" name="unidade_id" required>
       {% for u in unidades %}<option value="{{ u.id }}">{{ u.bloco }}-{{ u.numero }}</option>{% endfor %}
     </select>
-    <label for="p_us">Proprietário</label>
+    <label for="p_us">Proprietário (até 2 por unidade)</label>
     <select id="p_us" name="usuario_id" required>
       {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nome }}</option>{% endfor %}
     </select>
     <button type="submit">Vincular</button>
   </form>
 
-  <form method="post" action="{{ url_for('admin_votante') }}" class="painel">
+  <form id="f_votante" method="post" action="{{ url_for('admin_votante') }}" class="painel">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
     <strong>Definir votante da unidade</strong>
     <label for="v_un">Unidade</label>
     <select id="v_un" name="unidade_id" required>
-      {% for u in unidades %}<option value="{{ u.id }}">{{ u.bloco }}-{{ u.numero }}</option>{% endfor %}
+      {% for u in unidades %}<option value="{{ u.id }}" {{ 'selected' if pre.unidade == u.id|string }}>{{ u.bloco }}-{{ u.numero }}</option>{% endfor %}
     </select>
     <label for="v_us">Quem vota pela unidade</label>
     <select id="v_us" name="usuario_id" required>
-      {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nome }}</option>{% endfor %}
+      {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if pre.usuario == u.id|string }}>{{ u.nome }}</option>{% endfor %}
     </select>
     <label for="v_ind">Indicado por (se não for proprietário)</label>
     <select id="v_ind" name="indicado_por">
       <option value="">—</option>
-      {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nome }}</option>{% endfor %}
+      {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if pre.ind == u.id|string }}>{{ u.nome }}</option>{% endfor %}
     </select>
     <button type="submit">Salvar votante</button>
   </form>
@@ -55,12 +59,13 @@
 
 <h2>Votante atual de cada unidade</h2>
 <div class="tabela"><table>
-  <thead><tr><th>Unidade</th><th>Votante</th><th>Tipo</th><th>Indicado por</th></tr></thead>
+  <thead><tr><th>Unidade</th><th>Votante</th><th>Tipo</th><th>Indicado por</th><th></th></tr></thead>
   <tbody>
   {% for v in votantes %}
-    <tr><td>{{ v.bloco }}-{{ v.numero }}</td><td>{{ v.nome }}</td><td>{{ v.tipo }}</td><td>{{ v.indicado_por or '—' }}</td></tr>
+    <tr><td>{{ v.bloco }}-{{ v.numero }}</td><td>{{ v.nome }}</td><td>{{ v.tipo }}</td><td>{{ v.indicado_por or '—' }}</td>
+    <td><a href="{{ url_for('admin', unidade=v.unidade_id, usuario=v.usuario_id, ind=v.ind_id or '') }}#f_votante">Editar</a></td></tr>
   {% else %}
-    <tr><td colspan="4" class="muted">Nenhuma unidade tem votante definido.</td></tr>
+    <tr><td colspan="5" class="muted">Nenhuma unidade tem votante definido.</td></tr>
   {% endfor %}
   </tbody>
 </table></div>
