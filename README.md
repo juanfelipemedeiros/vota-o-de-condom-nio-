@@ -8,16 +8,39 @@ Regras:
 - Cada apartamento tem um único votante ativo.
 - O voto é identificado (fica registrado quem votou).
 
-## Como rodar
+## Requisitos
+
+- **Python 3.9 ou superior** (https://www.python.org/downloads/). No Windows, marque "Add Python to PATH" na instalação. Confira com `python --version`.
+- **Flask 3** (única biblioteca; é instalada pelo `pip`, passo abaixo).
+- O banco SQLite já vem com o Python, não precisa instalar nada.
+- Um navegador (Chrome, Edge, Firefox...).
+
+## Instalação
+
+Na pasta do projeto, no terminal:
 
 ```bash
 python -m venv venv
-# Windows:  venv\Scripts\activate
-# Linux/Mac: source venv/bin/activate
+# Windows (PowerShell):  venv\Scripts\activate
+# Linux/Mac:             source venv/bin/activate
 pip install -r requirements.txt
 python init_db.py --demo     # cria o banco com dados de teste
-python app.py                # abre em http://127.0.0.1:5000
 ```
+
+Se o PowerShell bloquear o `activate`, rode antes:
+`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`.
+
+Atenção: `init_db.py` **apaga e recria** o banco. Rode só na primeira vez.
+
+## Como rodar
+
+Com o ambiente virtual ativado (`(venv)` aparece no terminal):
+
+```bash
+python app.py
+```
+
+Abra http://127.0.0.1:5000 no navegador. Para parar, `Ctrl+C` no terminal.
 
 Logins de teste:
 - Síndico: admin@condominio.com / admin123
