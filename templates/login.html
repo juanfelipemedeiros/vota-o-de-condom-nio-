@@ -3,6 +3,7 @@
 {% block conteudo %}
 <h1>Entrar</h1>
 <form method="post" class="painel" style="max-width:420px">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
   <label for="email">E-mail</label>
   <input id="email" name="email" type="email" required autofocus>
   <label for="senha">Senha</label>

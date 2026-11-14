@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS votacoes (
     descricao    TEXT,
     data_inicio  TEXT NOT NULL,   -- formato YYYY-MM-DDTHH:MM
     data_fim     TEXT NOT NULL,
+    encerra_ao_completar INTEGER NOT NULL DEFAULT 0,  -- 1 = fecha quando todas as unidades votarem
     CHECK (data_fim > data_inicio)
 );
 

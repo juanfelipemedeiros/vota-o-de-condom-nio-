@@ -1,1 +1,5 @@
 votacao.db
+votacao.db-wal
+votacao.db-shm
+__pycache__/
+venv/
